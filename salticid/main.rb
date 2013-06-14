@@ -16,6 +16,51 @@ role :base do
   end
 end
 
+role :couchdb do
+  task :setup do
+    sudo do
+      # build tools
+      exec! 'apt-get install -y build-essential libtool autoconf automake autoconf-archive pkg-config', echo: true
+      # dependencies
+      exec! 'apt-get install -y erlang libssl0.9.8 libssl-dev zlib1g zlib1g-dev libcurl4-openssl-dev lsb-base  ncurses-dev libncurses-dev libmozjs-dev libmozjs2d libicu-dev xsltproc', echo: true
+      cd '/opt'
+      unless dir? 'couchdb'
+        git :clone, 'git://github.com/apache/couchdb.git', echo: true
+      end
+      cd 'couchdb'
+      begin
+        git :checkout, '1.3.0'
+      end
+      git :pull, echo: true
+      exec! './bootstrap', echo: true
+      exec! "./configure --prefix=/opt/couchdb-#{name} && make && make check && make install"
+      echo File.read("/opt/couchdb-#{name}/etc/couchdb/local.ini").gsub(';port = 5984', "port = 598#{name[1]}"), to: "/opt/couchdb-#{name}/etc/couchdb/local.ini"
+    end
+  end
+
+  task :deploy do
+  end
+
+  task :start do
+    exec! "/opt/couchdb-#{name}/bin/couchdb"
+  end
+
+  task :stop do
+    killall '-9', 'beam.smp'
+  end
+  
+  task :restart do
+    sudo do
+      couchdb.stop rescue false
+      couchdb.start
+    end
+  end
+
+  task :ping do
+
+  end
+end
+
 role :riak do
   task :setup do
     sudo do
